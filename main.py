@@ -14,7 +14,6 @@ bot = telebot.TeleBot(token)
 # 8 вывести за определенный период
 # 9 вывести за месяц
 # 10 отдельное сообщение при количестве категорий 0 для take_message
-# 11 /excel при первом запуске все ломает
 # mainmenu = types.InlineKeyboardMarkup()
 # key1 = types.InlineKeyboardButton(text='about', callback_data='key1')
 # key2 = types.InlineKeyboardButton(text='new record', callback_data='key2')
@@ -96,8 +95,11 @@ def show_cats(message):
 
 @bot.message_handler(commands=['excel'])
 def excel(message):
-    with save_open('data', str(message.chat.id) + '.csv') as doc:
-	    bot.send_document(message.chat.id, doc)   
+    try:
+        with save_open('data', str(message.chat.id) + '.csv') as doc:
+            bot.send_document(message.chat.id, doc)   
+    except:
+        bot.send_message(message.chat.id, 'there no records')  
 
 @bot.message_handler(commands=['del'])
 def del_last_record(message):
