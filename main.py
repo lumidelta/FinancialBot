@@ -1,6 +1,8 @@
 import telebot
 from telebot import types
 from datetime import datetime
+from pathlib import Path
+
 with open("token.txt", "r") as f:
     token = f.read()
 bot = telebot.TeleBot(token)
@@ -11,6 +13,8 @@ bot = telebot.TeleBot(token)
 # 6 вывести за определенную дату
 # 8 вывести за определенный период
 # 9 вывести за месяц
+# 10 отдельное сообщение при количестве категорий 0 для take_message
+# 11 /excel при первом запуске все ломает
 # mainmenu = types.InlineKeyboardMarkup()
 # key1 = types.InlineKeyboardButton(text='about', callback_data='key1')
 # key2 = types.InlineKeyboardButton(text='new record', callback_data='key2')
@@ -18,10 +22,21 @@ bot = telebot.TeleBot(token)
 # mainmenu.add(key1, key2)
 #bot.send_message(message.chat.id, 'choose category', reply_markup=mainmenu)
 
+def save_open(path, name, opts = 'r'):
+    Path(path).mkdir(parents=True, exist_ok=True)
+    try:
+        new_opts = opts.replace('r+', 'a+').replace('r', 'a+')
+        file = open(path + '/' + name, new_opts)
+        if opts == 'r+' or opts == 'r':
+            file.seek(0)
+        return file
+    except:
+        raise RuntimeError("Error with opening file")
+
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.send_message(message.chat.id, '\help ..... \\newcat .... \excel ...')
+    bot.send_message(message.chat.id, '\\help ..... \\newcat .... \\excel ...')
 
 @bot.message_handler(commands=['help'])
 def help(message):
@@ -35,7 +50,7 @@ def take_message(message):
     except:
         bot.send_message(message.chat.id, 'input "/newcat category" to add new category')
         return 
-    file = open('data/' + str(message.chat.id) + '_cat' + '.csv', 'r+')
+    file = save_open('data', str(message.chat.id) + '_cat' + '.csv', 'a+')
     catset = set([i.strip() for i in file.readlines()])
     catset.add(newcat)
     file.truncate(0) 
@@ -53,7 +68,7 @@ def take_message(message):
     except:
         bot.send_message(message.chat.id, 'input "/delcat category" to delete category')
         return 
-    file = open('data/' + str(message.chat.id) + '_cat' + '.csv', 'r+')
+    file = save_open('data', str(message.chat.id) + '_cat' + '.csv', 'r+')
     catset = set([i.strip() for i in file.readlines()])
     try:
         catset.remove(badcat)
@@ -69,7 +84,7 @@ def take_message(message):
  
 @bot.message_handler(commands=['cats'])
 def show_cats(message): 
-    file = open('data/' + str(message.chat.id) + '_cat' + '.csv', 'r')
+    file = save_open('data', str(message.chat.id) + '_cat' + '.csv', 'r')
     catset = set([i.strip() for i in file.readlines()])
     file.close()
     if catset == set():
@@ -81,13 +96,13 @@ def show_cats(message):
 
 @bot.message_handler(commands=['excel'])
 def excel(message):
-    with open('./data/' + str(message.chat.id) + '.csv') as doc:
+    with save_open('data', str(message.chat.id) + '.csv') as doc:
 	    bot.send_document(message.chat.id, doc)   
 
 @bot.message_handler(commands=['del'])
 def del_last_record(message):
     try:
-        with open('./data/' + str(message.chat.id) + '.csv', 'r+') as file:
+        with save_open('data', str(message.chat.id) + '.csv', 'r+') as file:
             newdata = file.readlines()[:-1]
             file.seek(0)
             file.truncate(0)
@@ -98,7 +113,7 @@ def del_last_record(message):
 
 @bot.message_handler(commands=['rotatecat'])
 def rotate_cat(message):
-    with open('./data/' + str(message.chat.id) + '_set' + '.csv', 'a+') as file:
+    with save_open('data', str(message.chat.id) + '_set' + '.csv', 'a+') as file:
         file.seek(0)
         lines = file.readlines()
         try:
@@ -131,40 +146,32 @@ def take_message(message):
         bot.send_message(message.chat.id, 'input "cost name" with space')
         return 
 
+    file = save_open('data', str(message.chat.id) + '_cat' + '.csv', 'r')
+    file_set = save_open('data', str(message.chat.id) + '_set' + '.csv', 'a+')
+    file_set.seek(0)
+    lines = file_set.readlines()
     try:
-        file = open('data/' + str(message.chat.id) + '_cat' + '.csv', 'r')
-        file_set = open('data/' + str(message.chat.id) + '_set' + '.csv', 'a+')
-        file_set.seek(0)
-        lines = file_set.readlines()
-        try:
-            flag = int(lines[0])
-            record_flag = int(lines[1])
-        except:
-            flag = 0
-            record_flag = 0
-        catset = set(file.readlines())
-        file.close()
+        flag = int(lines[0])
+        record_flag = int(lines[1])
     except:
-        file = open('data/' + str(message.chat.id) + '_cat' + '.csv', 'w+')
-        file.close()
+        file_set.write("0\n0\n0\n")
         flag = 0
-        #catset = set(file.readlines())
+        record_flag = 0
+    catset = set(file.readlines())
+    file.close()
     
     if record_flag == 1:
-        file = open('data/' + str(message.chat.id) + '.csv', 'a+')
+        file = save_open('data', str(message.chat.id) + '.csv', 'a+')
         file.write('\n')
         file.close()
-        file_set = open('data/' + str(message.chat.id) + '_set' + '.csv', 'a+')
+        file_set = save_open('data', str(message.chat.id) + '_set' + '.csv', 'a+')
         file_set.seek(0)
         lines = file_set.readlines()
-        # try:
         bot.edit_message_text(chat_id=message.chat.id, message_id=int(lines[2]), text='done')
-        # except:
-        #     pass
         file_set.close()
         
     if flag == 1:
-        file = open('data/' + str(message.chat.id) + '.csv', 'a+')
+        file = save_open('data', str(message.chat.id) + '.csv', 'a+')
         file.write(str(datetime.now()) + ', ' + ', '.join(splitted) + ', ')
         file.close()
         mainmenu = types.InlineKeyboardMarkup()
@@ -173,16 +180,17 @@ def take_message(message):
             buttons.append(types.InlineKeyboardButton(text=i, callback_data=i))
             mainmenu.add(buttons[-1])
         bot.send_message(message.chat.id, 'choose category', reply_markup=mainmenu)
-        file = open('data/' + str(message.chat.id) + '_set' + '.csv', 'a+')
+        file = save_open('data', str(message.chat.id) + '_set' + '.csv', 'a+')
         file.seek(0)
         lines = file.readlines()
-        lines[1] = '1\n' 
+        lines[1] = '1\n'
+        lines[2] = str(message.message_id + 1) + '\n'
         file.seek(0)
         file.truncate(0)
         file.write(''.join(lines))
         file.close()
     else:
-        file = open('data/' + str(message.chat.id) + '.csv', 'a+')
+        file = save_open('data', str(message.chat.id) + '.csv', 'a+')
         file.write(str(datetime.now()) + ', ' + ', '.join(splitted) + ', \n')
         file.close()
         bot.send_message(message.chat.id, 'done')
@@ -190,21 +198,21 @@ def take_message(message):
 
 @bot.callback_query_handler(lambda query: True)
 def catbuttons(query):
-    file = open('data/' + str(query.message.chat.id) + '_cat' + '.csv', 'r')
+    file = save_open('data', str(query.message.chat.id) + '_cat' + '.csv', 'r')
     catset = set(file.readlines())
     file.close()
     for cat in catset:
         if query.data == cat:
-            file = open('data/' + str(query.message.chat.id) + '.csv', 'a+')
+            file = save_open('data', str(query.message.chat.id) + '.csv', 'a+')
             file.write(cat.strip() + '\n')
             file.close()
             flag = 0
             break
-    with open('data/' + str(query.message.chat.id) + '_set' + '.csv', 'r') as file:
+    with save_open('data', str(query.message.chat.id) + '_set' + '.csv', 'r') as file:
         lines = file.readlines()
         lines[1] = '0\n'
-        lines[2] = str(query.message.message_id) + '\n'
-    with open('data/' + str(query.message.chat.id) + '_set' + '.csv', 'w') as file:
+        lines[2] = '0\n'
+    with save_open('data', str(query.message.chat.id) + '_set' + '.csv', 'w') as file:
         file.write(''.join(lines)) 
     
     bot.edit_message_text(chat_id=query.message.chat.id, message_id=query.message.message_id, text='done')
