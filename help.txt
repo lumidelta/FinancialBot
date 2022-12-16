@@ -1,0 +1,10 @@
+this bot can help you to keep your spendings
+1. if you want to write your spending just send message to the bot.
+describe your spending: 'cost name'
+2. you can use categories for your records, if you want to turn on or turn off categories use command /rotatecat
+3. you can have an excel file with your records, use command /excel
+4. you can use command /help 
+5. to create new category use command /newcat
+6. to delete new category use command /delcat
+7. to see your categories use command /cats
+8. to delete last record use command /del

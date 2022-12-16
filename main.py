@@ -7,19 +7,10 @@ with open("token.txt", "r") as f:
     token = f.read()
 bot = telebot.TeleBot(token)
 
-# 2 выбор категории с помощью кнопок 
-# 3 возможность отключить категорию
-# 5 переделать запись + 
 # 6 вывести за определенную дату
 # 8 вывести за определенный период
 # 9 вывести за месяц
-# 10 отдельное сообщение при количестве категорий 0 для take_message
-# mainmenu = types.InlineKeyboardMarkup()
-# key1 = types.InlineKeyboardButton(text='about', callback_data='key1')
-# key2 = types.InlineKeyboardButton(text='new record', callback_data='key2')
-# key2 = types.InlineKeyboardButton(text='new category', callback_data='key3')
-# mainmenu.add(key1, key2)
-#bot.send_message(message.chat.id, 'choose category', reply_markup=mainmenu)
+
 
 def save_open(path, name, opts = 'r'):
     Path(path).mkdir(parents=True, exist_ok=True)
@@ -33,13 +24,11 @@ def save_open(path, name, opts = 'r'):
         raise RuntimeError("Error with opening file")
 
 
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    bot.send_message(message.chat.id, '\\help ..... \\newcat .... \\excel ...')
-
-@bot.message_handler(commands=['help'])
+@bot.message_handler(commands=['start','help','menu'])
 def help(message):
-	bot.send_message(message.chat.id, ' smt useful ')
+    with open('help.txt', 'r') as f:
+        s = ' '.join(f.readlines())
+    bot.send_message(message.chat.id, s)
 
 @bot.message_handler(commands=['newcat'])
 def take_message(message): 
@@ -90,9 +79,8 @@ def show_cats(message):
         bot.send_message(message.chat.id, 'there are no category :c ')
     else:
         cats = '\n'.join(catset)
-        bot.send_message(message.chat.id, 'so many cats \n' + cats)
+        bot.send_message(message.chat.id, 'your cats: \n' + cats)
     
-
 @bot.message_handler(commands=['excel'])
 def excel(message):
     try:
@@ -124,17 +112,31 @@ def rotate_cat(message):
                 flag = 0
                 lines[0] = '0\n'
             else:
-                flag = 1
-                lines[0] = '1\n'
+                file2 = save_open('data', str(message.chat.id) + '_cat' + '.csv', 'r')
+                catset = set([i.strip() for i in file2.readlines()])
+                file2.close()
+                if catset == set():
+                    bot.send_message(message.chat.id, 'add category with commad /newcat to turn categories on\n')
+                else:
+                    flag = 1
+                    lines[0] = '1\n'
             file.seek(0)
             file.truncate(0)
             file.write(''.join(lines))
         except:
+            print('here')
             flag = 0
     if flag:
         bot.send_message(message.chat.id, 'categories on')  
     else:
         bot.send_message(message.chat.id, 'categories off') 
+        
+        
+# @bot.message_handler(commands=['week'])
+# def week_stats(message):
+#     file = save_open('data', str(message.chat.id) + '.csv', 'r')
+#     bot.send_message(message.chat.id, 'week statistics')
+
 
 @bot.message_handler(content_types=['text'])
 def take_message(message): 
@@ -181,7 +183,8 @@ def take_message(message):
         for i in catset:
             buttons.append(types.InlineKeyboardButton(text=i, callback_data=i))
             mainmenu.add(buttons[-1])
-        bot.send_message(message.chat.id, 'choose category', reply_markup=mainmenu)
+        if len(catset) != 0:    
+            bot.send_message(message.chat.id, 'choose category', reply_markup=mainmenu)
         file = save_open('data', str(message.chat.id) + '_set' + '.csv', 'a+')
         file.seek(0)
         lines = file.readlines()
